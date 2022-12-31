@@ -1,3 +1,4 @@
+library(IRanges)
 library(tidyverse)
 
 sets_raw <- read_csv("sets.csv")
@@ -12,4 +13,23 @@ find_ancestor <- function(target_id) {
 }
 
 themes <- themes_raw %>% 
-  mutate(ancestor_theme_id = map_dbl(id, find_ancestor)) 
+  mutate(ancestor_id = map_dbl(id, find_ancestor))
+
+themes <- themes %>%
+  left_join(themes %>% select(ancestor_id = id, ancestor_name = name))
+
+sets <- sets_raw %>%
+  left_join(themes %>% select(theme_id = id, ancestor_name))
+
+
+run_range_cols <- function() {
+  y <- cur_data()$year
+  y <- y %>% unique %>% sort
+  IRanges::reduce(IRanges(y)) %>% data.frame %>% select(start, end)
+}
+
+
+sets %>% 
+  group_by(theme = ancestor_name) %>%
+  summarize(rr = run_range_cols()) %>%
+  unpack(cols = rr) 
